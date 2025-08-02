@@ -538,3 +538,14 @@ if (DYNARMIC_USE_PRECOMPILED_HEADERS)
     target_precompile_headers(dynarmic PRIVATE ${PRECOMPILED_HEADERS})
     set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
 endif()
+
+# === BEGIN MODIFICATION TO ADD THE WRAPPER ===
+target_include_directories(dynarmic PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+target_sources(dynarmic PRIVATE
+    dynarmic_interface.cpp
+)
+# === END MODIFICATION TO ADD THE WRAPPER ===

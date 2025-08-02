@@ -1,6 +1,30 @@
 cmake_minimum_required(VERSION 3.12)
 project(dynarmic LANGUAGES C CXX ASM VERSION 6.7.0)
 
+# === BEGIN PATCH TO USE yuzu-mirror ext-boost ===
+# This patch instructs CMake to use the Boost version provided with
+# yuzu-mirror, avoiding the need for an external Boost.
+
+set(DYNARMIC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# construct the path to the ext-boost directory
+# Assuming ext-boost is located at ../ext-boost relative to where dynarmic is cloned.
+# E.g.: oboromi/third_party/dynarmic and oboromi/third_party/ext-boost
+set(EXT_BOOST_ROOT "${DYNARMIC_SOURCE_DIR}/../ext-boost")
+
+# verify the ext-boost directory exists
+if(NOT EXISTS "${EXT_BOOST_ROOT}")
+    message(FATAL_ERROR "ext-boost directory not found at ${EXT_BOOST_ROOT}. Please ensure ext-boost is cloned correctly relative to dynarmic (e.g., in ../ext-boost).")
+endif()
+
+# set CMake variables to point to ext-boost
+set(BOOST_ROOT "${EXT_BOOST_ROOT}")
+set(BOOST_INCLUDEDIR "${EXT_BOOST_ROOT}") # Explicitly specify the include directory
+set(Boost_NO_SYSTEM_PATHS ON) # Prevent CMake from searching for Boost elsewhere
+
+message(STATUS "Using Boost from embedded ext-boost at: ${EXT_BOOST_ROOT}")
+# === END PATCH TO USE yuzu-mirror ext-boost ===
+
 # Determine if we're built as a subproject (using add_subdirectory)
 # or if this is the master project.
 set(MASTER_PROJECT OFF)
@@ -129,6 +153,10 @@ message(STATUS "Target architecture: ${ARCHITECTURE}")
 
 # Forced use of individual bundled libraries for non-REQUIRED library is possible with e.g. cmake -DCMAKE_DISABLE_FIND_PACKAGE_fmt=ON ...
 
+# --- IMPORTANT NOTE ---
+# The lines below related to Boost are implicitly modified
+# by the code block above. find_package(Boost ...) will now use ext-boost.
+# ----------------------
 if (DYNARMIC_USE_BUNDLED_EXTERNALS)
     set(CMAKE_DISABLE_FIND_PACKAGE_biscuit ON)
     set(CMAKE_DISABLE_FIND_PACKAGE_Catch2 ON)
@@ -140,6 +168,7 @@ if (DYNARMIC_USE_BUNDLED_EXTERNALS)
     set(CMAKE_DISABLE_FIND_PACKAGE_Zydis ON)
 endif()
 
+# This line will now use the BOOST_ROOT etc. variables set above
 find_package(Boost 1.57 REQUIRED)
 find_package(fmt 9 CONFIG)
 find_package(mcl 0.1.12 EXACT CONFIG)
