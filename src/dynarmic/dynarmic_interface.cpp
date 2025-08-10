@@ -1,83 +1,86 @@
 #include "dynarmic_interface.h"
-#include <cstring>
 #include <dynarmic/interface/A64/a64.h>
 #include <dynarmic/interface/A64/config.h>
+#include <cstdint>
+#include <cstring>
+
+// Include Rust memory FFI
+extern "C" {
+    uint8_t oboromi_memory_read_u8(void* mem_ptr, uint64_t addr);
+    void    oboromi_memory_write_u8(void* mem_ptr, uint64_t addr, uint8_t value);
+    uint16_t oboromi_memory_read_u16(void* mem_ptr, uint64_t addr);
+    void     oboromi_memory_write_u16(void* mem_ptr, uint64_t addr, uint16_t value);
+    uint32_t oboromi_memory_read_u32(void* mem_ptr, uint64_t addr);
+    void     oboromi_memory_write_u32(void* mem_ptr, uint64_t addr, uint32_t value);
+    uint64_t oboromi_memory_read_u64(void* mem_ptr, uint64_t addr);
+    void     oboromi_memory_write_u64(void* mem_ptr, uint64_t addr, uint64_t value);
+}
 
 class MemoryCallbacks : public Dynarmic::A64::UserCallbacks {
 public:
-    uint8_t test_memory[4096] = {0};
+    // Pointer to Rust Memory backend
+    void* rust_mem;
 
+    explicit MemoryCallbacks(void* mem_ptr) : rust_mem(mem_ptr) {}
+
+    // All memory accesses are delegated to Rust backend
     uint8_t MemoryRead8(uint64_t vaddr) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            return test_memory[vaddr - 0x1000];
-        }
-        return 0;
+        return oboromi_memory_read_u8(rust_mem, vaddr);
     }
 
     uint16_t MemoryRead16(uint64_t vaddr) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            uint16_t value;
-            memcpy(&value, &test_memory[vaddr - 0x1000], sizeof(value));
-            return value;
-        }
-        return 0;
+        return oboromi_memory_read_u16(rust_mem, vaddr);
     }
 
     uint32_t MemoryRead32(uint64_t vaddr) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            uint32_t value;
-            memcpy(&value, &test_memory[vaddr - 0x1000], sizeof(value));
-            return value;
-        }
-        return 0;
+        return oboromi_memory_read_u32(rust_mem, vaddr);
     }
 
     uint64_t MemoryRead64(uint64_t vaddr) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            uint64_t value;
-            memcpy(&value, &test_memory[vaddr - 0x1000], sizeof(value));
-            return value;
-        }
-        return 0;
+        return oboromi_memory_read_u64(rust_mem, vaddr);
     }
 
-    Dynarmic::A64::Vector MemoryRead128(Dynarmic::A64::VAddr vaddr) override {
-        return Dynarmic::A64::Vector{};
+    Dynarmic::A64::Vector MemoryRead128(Dynarmic::A64::VAddr) override {
+        // If 128-bit loads are needed, split into two 64-bit loads
+        Dynarmic::A64::Vector vec{};
+        uint64_t lo = oboromi_memory_read_u64(rust_mem, 0);
+        uint64_t hi = oboromi_memory_read_u64(rust_mem, 8);
+        std::memcpy(&vec, &lo, sizeof(lo));
+        std::memcpy(reinterpret_cast<uint8_t*>(&vec) + 8, &hi, sizeof(hi));
+        return vec;
     }
 
     void MemoryWrite8(uint64_t vaddr, uint8_t value) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            test_memory[vaddr - 0x1000] = value;
-        }
+        oboromi_memory_write_u8(rust_mem, vaddr, value);
     }
 
     void MemoryWrite16(uint64_t vaddr, uint16_t value) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            memcpy(&test_memory[vaddr - 0x1000], &value, sizeof(value));
-        }
+        oboromi_memory_write_u16(rust_mem, vaddr, value);
     }
 
     void MemoryWrite32(uint64_t vaddr, uint32_t value) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            memcpy(&test_memory[vaddr - 0x1000], &value, sizeof(value));
-        }
+        oboromi_memory_write_u32(rust_mem, vaddr, value);
     }
 
     void MemoryWrite64(uint64_t vaddr, uint64_t value) override {
-        if (vaddr >= 0x1000 && vaddr < 0x2000) {
-            memcpy(&test_memory[vaddr - 0x1000], &value, sizeof(value));
-        }
+        oboromi_memory_write_u64(rust_mem, vaddr, value);
     }
 
     void MemoryWrite128(Dynarmic::A64::VAddr vaddr, Dynarmic::A64::Vector value) override {
+        uint64_t lo, hi;
+        std::memcpy(&lo, &value, sizeof(lo));
+        std::memcpy(&hi, reinterpret_cast<const uint8_t*>(&value) + 8, sizeof(hi));
+        oboromi_memory_write_u64(rust_mem, vaddr, lo);
+        oboromi_memory_write_u64(rust_mem, vaddr + 8, hi);
     }
 
+    // Other required overrides
     uint64_t GetTicksRemaining() override { return 1; }
-    void AddTicks(uint64_t ticks) override {}
-    void ExceptionRaised(uint64_t pc, Dynarmic::A64::Exception exception) override {}
-    bool IsReadOnlyMemory(uint64_t vaddr) override { return false; }
-    void InterpreterFallback(uint64_t pc, size_t num_instructions) override {}
-    void CallSVC(uint32_t swi) override {}
+    void AddTicks(uint64_t) override {}
+    void ExceptionRaised(uint64_t, Dynarmic::A64::Exception) override {}
+    bool IsReadOnlyMemory(uint64_t) override { return false; }
+    void InterpreterFallback(uint64_t, size_t) override {}
+    void CallSVC(uint32_t) override {}
     uint64_t GetCNTPCT() override { return 0; }
 };
 
@@ -86,7 +89,8 @@ struct DynarmicCPUIface {
     bool is_running;
     MemoryCallbacks callbacks;
 
-    DynarmicCPUIface() : is_running(false) {
+    DynarmicCPUIface(void* mem_ptr)
+        : is_running(false), callbacks(mem_ptr) {
         Dynarmic::A64::UserConfig config;
         config.callbacks = &callbacks;
         a64_jit = std::make_unique<Dynarmic::A64::Jit>(config);
@@ -95,9 +99,9 @@ struct DynarmicCPUIface {
 
 extern "C" {
 
-DynarmicCPUIface* dynarmic_create_instance() {
+DynarmicCPUIface* dynarmic_create_instance(void* memory_backend_ptr) {
     try {
-        return new DynarmicCPUIface();
+        return new DynarmicCPUIface(memory_backend_ptr);
     } catch (...) {
         return nullptr;
     }
@@ -169,9 +173,9 @@ void dynarmic_set_pc(DynarmicCPUIface* cpu, unsigned long long value) {
 }
 
 void dynarmic_write_u32(DynarmicCPUIface* cpu, unsigned long long vaddr, unsigned int value) {
-    if (!cpu || !cpu->a64_jit)
+    if (!cpu)
         return;
-    cpu->callbacks.MemoryWrite32(vaddr, value);
+    oboromi_memory_write_u32(cpu->callbacks.rust_mem, vaddr, value);
 }
 
 }
