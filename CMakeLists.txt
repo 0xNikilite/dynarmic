@@ -184,7 +184,7 @@ endif()
 
 if ("x86_64" IN_LIST ARCHITECTURE)
     find_package(xbyak 7 CONFIG)
-    find_package(Zydis 4 CONFIG)
+    add_subdirectory(externals/zydis)
 endif()
 
 if (DYNARMIC_USE_LLVM)
