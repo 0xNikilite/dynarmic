@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.12)
 project(dynarmic LANGUAGES C CXX ASM VERSION 6.7.0)
 
-# === BEGIN PATCH TO USE yuzu-mirror ext-boost ===
+# === BEGIN PATCH TO USE 0xNikilite's ext-boost ===
 # This patch instructs CMake to use the Boost version provided with
-# yuzu-mirror, avoiding the need for an external Boost.
+# my fork, avoiding the need for an external Boost.
 
 set(DYNARMIC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -23,7 +23,7 @@ set(BOOST_INCLUDEDIR "${EXT_BOOST_ROOT}") # Explicitly specify the include direc
 set(Boost_NO_SYSTEM_PATHS ON) # Prevent CMake from searching for Boost elsewhere
 
 message(STATUS "Using Boost from embedded ext-boost at: ${EXT_BOOST_ROOT}")
-# === END PATCH TO USE yuzu-mirror ext-boost ===
+# === END PATCH TO USE 0xNikilite's ext-boost ===
 
 # Determine if we're built as a subproject (using add_subdirectory)
 # or if this is the master project.
