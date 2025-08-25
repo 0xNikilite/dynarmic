@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
+#include <boost/variant/variant.hpp>
 
 namespace Dynarmic::Common {
 namespace detail {

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
+#include <boost/variant/variant.hpp>
 #include <mcl/stdint.hpp>
 
 #include "dynarmic/ir/cond.h"
