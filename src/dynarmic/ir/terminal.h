@@ -1,3 +1,7 @@
+#define BOOST_VARIANT_DO_NOT_USE_VARIADIC_TEMPLATES
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE=30
+
 /* This file is part of the dynarmic project.
  * Copyright (c) 2016 MerryMage
  * SPDX-License-Identifier: 0BSD
