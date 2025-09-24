@@ -1,6 +1,6 @@
 #define BOOST_VARIANT_DO_NOT_USE_VARIADIC_TEMPLATES
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
-#define BOOST_MPL_LIMIT_LIST_SIZE 50  // Increase this
+#define BOOST_MPL_LIMIT_LIST_SIZE 50
 
 /* This file is part of the dynarmic project.
  * Copyright (c) 2016 MerryMage
@@ -79,34 +79,12 @@ struct PopRSBHint {};
  */
 struct FastDispatchHint {};
 
-// Forward declarations
+// Forward declarations only
 struct If;
 struct CheckBit;
 struct CheckHalt;
 
-// Define the recursive types FIRST
-struct If {
-    If(Cond if_, Terminal then_, Terminal else_)
-            : if_(if_), then_(std::move(then_)), else_(std::move(else_)) {}
-    Cond if_;
-    Terminal then_;
-    Terminal else_;
-};
-
-struct CheckBit {
-    CheckBit(Terminal then_, Terminal else_)
-            : then_(std::move(then_)), else_(std::move(else_)) {}
-    Terminal then_;
-    Terminal else_;
-};
-
-struct CheckHalt {
-    explicit CheckHalt(Terminal else_)
-            : else_(std::move(else_)) {}
-    Terminal else_;
-};
-
-// NOW define the Terminal variant AFTER the recursive types
+/// A Terminal is the terminal instruction in a MicroBlock.
 using Terminal = boost::variant<
     Invalid,
     Interpret,
@@ -118,6 +96,40 @@ using Terminal = boost::variant<
     boost::recursive_wrapper<If>,
     boost::recursive_wrapper<CheckBit>,
     boost::recursive_wrapper<CheckHalt>>;
+
+/**
+ * This terminal instruction conditionally executes one terminal or another depending
+ * on the run-time state of the ARM flags.
+ */
+struct If {
+    If(Cond if_, Terminal then_, Terminal else_)
+            : if_(if_), then_(std::move(then_)), else_(std::move(else_)) {}
+    Cond if_;
+    Terminal then_;
+    Terminal else_;
+};
+
+/**
+ * This terminal instruction conditionally executes one terminal or another depending
+ * on the run-time state of the check bit.
+ * then_ is executed if the check bit is non-zero, otherwise else_ is executed.
+ */
+struct CheckBit {
+    CheckBit(Terminal then_, Terminal else_)
+            : then_(std::move(then_)), else_(std::move(else_)) {}
+    Terminal then_;
+    Terminal else_;
+};
+
+/**
+ * This terminal instruction checks if a halt was requested. If it wasn't, else_ is
+ * executed.
+ */
+struct CheckHalt {
+    explicit CheckHalt(Terminal else_)
+            : else_(std::move(else_)) {}
+    Terminal else_;
+};
 
 }  // namespace Term
 using Term::Terminal;
